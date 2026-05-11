@@ -4,10 +4,8 @@ from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
 
-# --- FIREBASE SETUP ---
-# In a real app, you'd upload your JSON secret to Streamlit Secrets
+# Check if the app is already initialized to avoid the ValueError
 if not firebase_admin._apps:
-    # Replace 'path/to/your/key.json' with your actual file path
     cred = credentials.Certificate('serviceAccountKey.json')
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com/'
