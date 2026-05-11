@@ -10,7 +10,7 @@ if not firebase_admin._apps:
     # Replace 'path/to/your/key.json' with your actual file path
     cred = credentials.Certificate('serviceAccountKey.json')
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://your-project-id.firebaseio.com/'
+        'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com/'
     })
 
 ref = db.reference('incidents')
