@@ -1,0 +1,25 @@
+streamlit
+folium
+streamlit-folium
+firebase-admin
+
+
+ew to be added in list
+INC Triage  - Done
+Circuit Routing  =- Done
+CSG  - Done
+ASH-1075  - Done
+ASH-1076  - Done
+ASH-1077  - Done
+ASH-1078  - Done
+E0  - Done
+P3P4P5  - Done
+FPW - ASH-1086 / ASH-1104 - 
+ASH-1015 / ASH-1016
+On Demand  - 1054 / 1055
+Lock / Unlock
+
+
+https://ericsson.sharepoint.com/:x:/r/sites/ITSMUpgrade-2025SP/Shared%20Documents/ITSM%20Upgrade%20-2025%20SP/2026/MA%20Comms/Issue%20Tracker%20BGL%20Day.xlsx?d=w4b444354ca074634816f41295ebd4dc6&csf=1&web=1&e=YKDbvT
+
+https://ericsson.sharepoint.com/:x:/r/sites/ITSMUpgrade-2025SP/Shared%20Documents/ITSM%20Upgrade%20-2025%20SP/2026/MA%20Comms/Issue%20Tracker%20BGL%20Day.xlsx?d=w4b444354ca074634816f41295ebd4dc6&csf=1&web=1&e=81X0qu
