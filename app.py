@@ -1,17 +1,18 @@
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
 import firebase_admin
 from firebase_admin import credentials, db
 
-# Check if the app is already initialized to avoid the ValueError
+# Check if the app is already initialized to avoid duplicate errors
 if not firebase_admin._apps:
-    cred = credentials.Certificate('serviceAccountKey.json')
+    # Convert Streamlit secrets to a dictionary for Firebase
+    firebase_secrets = dict(st.secrets["firebase"])
+    cred = credentials.Certificate(firebase_secrets)
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com/'
+        'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com'
     })
 
-ref = db.reference('incidents')
+# Define the reference after successful initialization
+ref = db.reference('/')
 
 # --- UI CONFIG ---
 st.set_page_config(page_title="Community Safety AI", layout="wide")
