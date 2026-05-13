@@ -4,6 +4,7 @@ from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
+from geopy.distance import geodesic # <--- NEW: For calculating distance
 import random
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
@@ -34,26 +35,26 @@ geolocator = Nominatim(user_agent="safety_app_v2")
 
 # --- THREAT LEVEL CHECKPOINTS ---
 THREAT_MAP = {
-    1: {"color": "blue", "penalty": 5, "cat": "Level 1: General", "desc": "General observation (e.g., suspicious activity, street lights out)"},
-    2: {"color": "green", "penalty": 10, "cat": "Level 2: Minor", "desc": "Minor concern (e.g., verbal dispute, public nuisance)"},
-    3: {"color": "orange", "penalty": 25, "cat": "Level 3: Moderate", "desc": "Moderate risk (e.g., theft, snatching, reckless driving)"},
-    4: {"color": "red", "penalty": 45, "cat": "Level 4: High", "desc": "High threat (e.g., physical assault, robbery)"},
-    5: {"color": "darkred", "penalty": 65, "cat": "Level 5: Critical", "desc": "Critical emergency (e.g., armed threat, severe violence)"}
+    1: {"color": "blue", "penalty": 5, "cat": "Level 1: General", "desc": "Suspicious activity or infrastructure issues."},
+    2: {"color": "green", "penalty": 10, "cat": "Level 2: Minor", "desc": "Minor public nuisance or disputes."},
+    3: {"color": "orange", "penalty": 25, "cat": "Level 3: Moderate", "desc": "Theft, snatching, or reckless driving."},
+    4: {"color": "red", "penalty": 45, "cat": "Level 4: High", "desc": "Physical assault or robbery."},
+    5: {"color": "darkred", "penalty": 65, "cat": "Level 5: Critical", "desc": "Life-threatening emergency."}
 }
 
-def draw_danger_meter(score):
+def draw_danger_meter(score, area_name="Selected Area"):
     danger_val = 100 - score
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = danger_val,
-        title = {'text': "Current Danger Level", 'font': {'size': 20}},
+        title = {'text': f"Danger: {area_name}", 'font': {'size': 18}},
         gauge = {
             'axis': {'range': [0, 100]},
             'bar': {'color': "black"},
             'steps': [
-                {'range': [0, 30], 'color': "#2ecc71"}, # Green
-                {'range': [30, 70], 'color': "#f39c12"}, # Orange
-                {'range': [70, 100], 'color': "#e74c3c"}]})) # Red
+                {'range': [0, 30], 'color': "#2ecc71"},
+                {'range': [30, 70], 'color': "#f39c12"},
+                {'range': [70, 100], 'color': "#e74c3c"}]}))
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=20))
     return fig
 
@@ -85,25 +86,23 @@ else:
         st.session_state.logged_in = False
         st.rerun()
 
-    st.title("🛡️ Live Neighborhood Safety AI")
+    st.title("🛡️ Neighborhood Safety AI")
 
-    # 1. REPORTING (Slider Checkpoints + Description)
-    with st.expander("🚨 Report Incident"):
-        addr = st.text_input("Incident Location", placeholder="e.g. Noida Sector 18")
-        
-        # Drag Line / Slider with 1-5 Checkpoints
-        level = st.select_slider(
-            "Drag to Select Threat Level",
-            options=[1, 2, 3, 4, 5],
-            value=1,
-            help="1 is General, 5 is Life-Threatening"
-        )
-        
-        # Display the auto-generated description for that level
+    # 1. SEARCH AREA FOR SCORE (THE NEW FEATURE)
+    st.subheader("🔍 Check Local Safety Score")
+    view_city = st.text_input("Enter city/area to view safety level:", value="Ghaziabad")
+    view_loc = geolocator.geocode(view_city)
+    
+    view_lat, view_lon = (28.6692, 77.4538) # Default Ghaziabad
+    if view_loc:
+        view_lat, view_lon = view_loc.latitude, view_loc.longitude
+
+    # 2. REPORTING SECTION
+    with st.expander("🚨 Report Incident in this Area"):
+        addr = st.text_input("Specific Location", placeholder="e.g. Indirapuram")
+        level = st.select_slider("Threat Level", options=[1, 2, 3, 4, 5], value=1)
         st.warning(f"**{THREAT_MAP[level]['cat']}**: {THREAT_MAP[level]['desc']}")
-        
-        # Additional custom details
-        custom_desc = st.text_area("Detailed Description", placeholder="Add specific details about the event...")
+        custom_desc = st.text_area("Details")
 
         if st.button("Post Verified Report", use_container_width=True):
             if addr and custom_desc:
@@ -111,49 +110,53 @@ else:
                 if loc:
                     threat = THREAT_MAP[level]
                     ref.push({
-                        "lat": loc.latitude, 
-                        "lon": loc.longitude, 
-                        "address": loc.address,
-                        "desc": custom_desc,
-                        "category": threat["cat"], 
-                        "marker_color": threat["color"], 
-                        "penalty": threat["penalty"], 
-                        "timestamp": datetime.now().isoformat(),
-                        "is_verified": True,
-                        "threat_level": level
+                        "lat": loc.latitude, "lon": loc.longitude, "address": loc.address,
+                        "desc": custom_desc, "category": threat["cat"], "marker_color": threat["color"], 
+                        "penalty": threat["penalty"], "timestamp": datetime.now().isoformat(),
+                        "is_verified": True
                     })
                     st.success("Pinned to Map!")
                     st.rerun()
-                else:
-                    st.error("Location not found.")
-            else:
-                st.warning("Please provide a location and details.")
 
-    # 2. DATA PROCESSING (24hr Filter)
+    # 3. DATA PROCESSING (24hr + Radius Filter)
     data = ref.get()
-    active_reports = []
+    local_reports = []
+    global_reports = []
+    
     if data:
         now = datetime.now()
+        center_coords = (view_lat, view_lon)
+        
         for r in data.values():
             ts = r.get('timestamp')
             if ts and (now - datetime.fromisoformat(ts) < timedelta(hours=24)):
-                active_reports.append(r)
+                report_coords = (r['lat'], r['lon'])
+                dist = geodesic(center_coords, report_coords).km
+                
+                global_reports.append(r)
+                
+                # ONLY count reports within 10km for the Safety Score
+                if dist <= 10:
+                    local_reports.append(r)
 
-    # 3. VISUALIZATION
-    safety_metric = max(0, 100 - sum(r.get('penalty', 0) for r in active_reports[-10:]))
+    # 4. LOCALIZED DASHBOARD
+    # Score is now calculated ONLY using reports within 10km of the searched area
+    local_penalty = sum(r.get('penalty', 0) for r in local_reports)
+    safety_metric = max(0, 100 - local_penalty)
+    
     c1, c2 = st.columns([2.5, 1])
     
     with c1:
-        m = folium.Map(location=[28.61, 77.20], zoom_start=12)
-        for r in active_reports:
+        m = folium.Map(location=[view_lat, view_lon], zoom_start=13)
+        for r in global_reports:
             folium.Marker(
                 [r['lat'], r['lon']], 
                 popup=f"<b>{r.get('category')}</b><br>{r.get('desc')}", 
                 icon=folium.Icon(color=r.get('marker_color', 'blue'))
             ).add_to(m)
-        st_folium(m, width=850, height=500)
+        st_folium(m, width=850, height=500, key="safety_map")
 
     with c2:
-        st.plotly_chart(draw_danger_meter(safety_metric), use_container_width=True)
-        st.metric("Safety Score", f"{safety_metric}/100")
-        st.write(f"Recent Alerts (24h): {len(active_reports)}")
+        st.plotly_chart(draw_danger_meter(safety_metric, view_city), use_container_width=True)
+        st.metric(f"Safety in {view_city}", f"{safety_metric}/100")
+        st.write(f"Incidents within 10km: {len(local_reports)}")
