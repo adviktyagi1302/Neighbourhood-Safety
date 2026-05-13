@@ -3,6 +3,39 @@ import firebase_admin
 from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
+from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim
+
+# Initialize the geocoder
+geolocator = Nominatim(user_agent="my_safety_app")
+
+st.title("Report Neighborhood Safety")
+
+# User types address instead of Lat/Lon
+address_input = st.text_input("Enter Address (e.g., Mall Road, Kanpur or Sector 15, Gurgaon)")
+
+if address_input:
+    try:
+        # This converts address -> coordinates
+        location = geolocator.geocode(address_input)
+        
+        if location:
+            lat = location.latitude
+            lon = location.longitude
+            
+            st.success(f"Location found: {location.address}")
+            st.write(f"Coordinates: {lat}, {lon}")
+            
+            # Now, when the user clicks "Submit", you save these 
+            # lat/lon values to your Firebase database
+            if st.button("Submit Report"):
+                # Your Firebase save logic here using 'lat' and 'lon'
+                st.info("Report saved for this location!")
+        else:
+            st.warning("Could not find that address. Try adding the city name.")
+            
+    except Exception as e:
+        st.error("Service is busy, please try again in a moment.")
 
 # Initialize Firebase only once
 if not firebase_admin._apps:
