@@ -1,3 +1,5 @@
+import folium
+from streamlit_folium import st_folium
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
