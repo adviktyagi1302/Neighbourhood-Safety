@@ -2,16 +2,22 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 
+# Initialize Firebase only once
 if not firebase_admin._apps:
-    # Use the dictionary from Streamlit Secrets
-    firebase_secrets = dict(st.secrets["firebase"])
-    cred = credentials.Certificate(firebase_secrets)
+    # Pulling from the Streamlit Secrets vault
+    fb_creds = dict(st.secrets["firebase"])
+    cred = credentials.Certificate(fb_creds)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com'
     })
 
+# Now try the get request
 ref = db.reference('/')
-
+try:
+    data = ref.get()
+    st.write("Data successfully loaded!")
+except Exception as e:
+    st.error(f"Failed to fetch data: {e}")
 # --- UI CONFIG ---
 st.set_page_config(page_title="Community Safety AI", layout="wide")
 st.title("🛡️ Live Neighborhood Safety App")
