@@ -11,32 +11,39 @@ geolocator = Nominatim(user_agent="my_safety_app")
 
 st.title("Report Neighborhood Safety")
 
-# User types address instead of Lat/Lon
-address_input = st.text_input("Enter Address (e.g., Mall Road, Kanpur or Sector 15, Gurgaon)")
+st.subheader("📍 Report an Incident")
+
+# Only one input box for the user
+address_input = st.text_input("Where did this happen?", placeholder="e.g. Sector 62, Noida")
 
 if address_input:
-    try:
-        # This converts address -> coordinates
-        location = geolocator.geocode(address_input)
+    geolocator = Nominatim(user_agent="safety_app_v1")
+    location = geolocator.geocode(address_input)
+    
+    if location:
+        # We store the coordinates invisibly in the background
+        lat, lon = location.latitude, location.longitude
         
-        if location:
-            lat = location.latitude
-            lon = location.longitude
-            
-            st.success(f"Location found: {location.address}")
-            st.write(f"Coordinates: {lat}, {lon}")
-            
-            # Now, when the user clicks "Submit", you save these 
-            # lat/lon values to your Firebase database
-            if st.button("Submit Report"):
-                # Your Firebase save logic here using 'lat' and 'lon'
-                st.info("Report saved for this location!")
-        else:
-            st.warning("Could not find that address. Try adding the city name.")
-            
-    except Exception as e:
-        st.error("Service is busy, please try again in a moment.")
-
+        st.success(f"Selected: {location.address}")
+        
+        # Now show the safety details
+        safety_score = st.slider("Safety Score (1 = Dangerous, 5 = Very Safe)", 1, 5, 3)
+        comment = st.text_area("What's the situation there?")
+        
+        if st.button("Confirm & Post Report"):
+            # Save everything to Firebase
+            new_report = {
+                "address": location.address,
+                "lat": lat,
+                "lon": lon,
+                "score": safety_score,
+                "comment": comment
+            }
+            db.reference('/markers').push(new_report)
+            st.balloons()
+            st.success("Report submitted successfully!")
+    else:
+        st.error("Address not found. Please try adding the city name (e.g., 'Indirapuram, Ghaziabad').")
 # Initialize Firebase only once
 if not firebase_admin._apps:
     # Pulling from the Streamlit Secrets vault
