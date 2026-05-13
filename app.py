@@ -2,16 +2,14 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 
-# Check if the app is already initialized to avoid duplicate errors
 if not firebase_admin._apps:
-    # Convert Streamlit secrets to a dictionary for Firebase
+    # Use the dictionary from Streamlit Secrets
     firebase_secrets = dict(st.secrets["firebase"])
     cred = credentials.Certificate(firebase_secrets)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://chat-app-e4994-default-rtdb.firebaseio.com'
     })
 
-# Define the reference after successful initialization
 ref = db.reference('/')
 
 # --- UI CONFIG ---
